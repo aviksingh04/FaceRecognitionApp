@@ -3,10 +3,11 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
     container: {
         flex: 1,
+        marginTop:50
     },
 
     registerButton: {
-        marginTop: 50,
+        // marginTop: 50,
         padding: 12,
         backgroundColor: '#2196F3',
         borderRadius: 8,
@@ -46,7 +47,7 @@ export const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
         borderRadius: 8,
         alignSelf: 'center',
-        marginBottom: 20,
+        // marginBottom: 20,
     },
 
     verifyButtonText: {

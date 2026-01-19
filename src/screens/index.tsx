@@ -1,20 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Camera, useCameraDevices } from 'react-native-vision-camera';
-import { detectFaces } from './src/ml/faceDetection';
-import { normalizeVector } from './src/utils/vectorMath';
-import { generateFaceVector } from './src/utils/faceEmbedding';
-import { getStoredFaces, saveFace } from './src/storage/faceStorage';
-import { matchFace } from './src/ml/faceMatcher';
-
-export default function App() {
+import { detectFaces } from '../ml/faceDetection';
+import { normalizeVector } from '../utils/vectorMath';
+import { generateFaceVector } from '../utils/faceEmbedding';
+import { getStoredFaces, saveFace } from '../storage/faceStorage';
+import { matchFace } from '../ml/faceMatcher';
+import { styles } from './style';
+export default function FaceRecognition() {
     const cameraRef = useRef<Camera>(null);
 
     const devices = useCameraDevices();
     const device = devices.find(d => d.position === 'front') ?? devices.find(d => d.position === 'back');
     const [permission, setPermission] = useState<'granted' | 'authorized' | 'denied' | 'not-determined'>('not-determined');
     const [cameraReady, setCameraReady] = useState(false);
+    const [takePermission, setTakePermission] = useState(false);
     const [userName, setUserName] = useState('');
+
+    const [storedUsers, setStoredUsers] = useState<any[]>([]);
+    const [showUserList, setShowUserList] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+
+
 
     useEffect(() => {
         (async () => {
@@ -31,16 +38,8 @@ export default function App() {
     useEffect(() => {
         (async () => {
             const stored = await getStoredFaces();
-            console.log('Registered users =>useEffect=>', stored);
         })();
     }, []);
-
-    // useEffect(() => {
-    //   (async () => {
-    //     const status = await Camera.requestCameraPermission();
-    //     setPermission(status);
-    //   })();
-    // }, []);
 
     if (permission !== 'granted') {
         return <Text>Camera permission not granted</Text>;
@@ -50,18 +49,6 @@ export default function App() {
         return <Text>Loading camera device...</Text>;
     }
 
-    //  const capturePhoto = async () => {
-    //   if (!cameraRef.current || !cameraReady) {
-    //     console.log('Camera not ready yet');
-    //     return;
-    //   }
-
-    //   const photo = await cameraRef.current.takePhoto({
-    //     flash: 'off',
-    //   });
-
-    //   console.log('PHOTO PATH =>', photo.path);
-    // };
     const capturePhoto = async () => {
         if (!cameraRef.current || !cameraReady) return;
 
@@ -76,8 +63,6 @@ export default function App() {
         console.log('IMAGE URI =>', imageUri);
 
         const faces = await detectFaces(imageUri);
-        console.log('Faces detected =>', faces.length);
-
         if (faces.length !== 1) {
             Alert.alert(
                 'Face Error',
@@ -90,14 +75,6 @@ export default function App() {
 
         const faceVectorRaw = generateFaceVector(faces[0]);
         const faceVector = normalizeVector(faceVectorRaw);
-
-        console.log('Face vector length =>', faceVector.length);
-
-        // 🔥 STEP 3: SAVE FACE
-        // await saveFace({
-        //   name: userName.trim(),
-        //   faceVector,
-        // });
         try {
             await saveFace({
                 name: userName.trim(),
@@ -116,51 +93,6 @@ export default function App() {
 
         setUserName('');
     };
-
-    // const capturePhoto = async () => {
-    //   if (!cameraRef.current || !cameraReady) return;
-
-    //   const photo = await cameraRef.current.takePhoto({ flash: 'off' });
-
-    //   const imageUri = `file://${photo.path}`;
-    //   console.log('IMAGE URI =>', imageUri);
-
-    //   const faces = await detectFaces(imageUri);
-
-    //   console.log('Faces detected =>', faces.length);
-
-    //   console.log('Faces detected =>', faces.length);
-
-    //   if (faces.length !== 1) {
-    //     Alert.alert(
-    //       'Face Error',
-    //       faces.length === 0
-    //         ? 'No face detected'
-    //         : 'Multiple faces detected'
-    //     );
-    //     return;
-    //   }
-    //   console.log('FACE OBJECT =>', JSON.stringify(faces[0], null, 2));
-
-    //   const faceVectorRaw = generateFaceVector(faces[0]);
-    //   const faceVector = normalizeVector(faceVectorRaw);
-
-    //   console.log('Face vector length =>', faceVector.length);
-    //   console.log('Face vector sample =>', faceVector.slice(0, 5));
-
-
-    //   if (faces.length === 0) {
-    //     Alert.alert('No face detected. Try again.');
-    //     return;
-    //   }
-
-    //   if (faces.length > 1) {
-    //     Alert.alert('Multiple faces detected. Only one person allowed.');
-    //     return;
-    //   }
-
-    //   console.log('Face bounds =>', faces[0].boundingBox);
-    // };
 
     const verifyFace = async () => {
         if (!cameraRef.current || !cameraReady) return;
@@ -202,63 +134,203 @@ export default function App() {
         }
     };
 
+    
+    // const verifyFace = async () => {
+    //     if (!cameraRef.current || !cameraReady) return;
+
+    //     const photo = await cameraRef.current.takePhoto({ flash: 'off' });
+    //     const imageUri = `file://${photo.path}`;
+
+    //     // 1️⃣ detect face
+    //     const faces = await detectFaces(imageUri);
+
+    //     if (faces.length !== 1) {
+    //         Alert.alert(
+    //             'Face Error',
+    //             faces.length === 0
+    //                 ? 'No face detected'
+    //                 : 'Multiple faces detected'
+    //         );
+    //         return;
+    //     }
+
+    //     // 2️⃣ generate vector
+    //     const rawVector = generateFaceVector(faces[0]);
+    //     const inputVector = normalizeVector(rawVector);
+
+    //     // 3️⃣ load AsyncStorage data
+    //     const storedFaces = await getStoredFaces();
+
+    //     if (storedFaces.length === 0) {
+    //         Alert.alert('No users registered');
+    //         return;
+    //     }
+
+    //     // 4️⃣ compare
+    //     const match = matchFace(inputVector, storedFaces);
+
+    //     // 5️⃣ result
+    //     if (match) {
+    //         Alert.alert(
+    //             'User Verified ✅',
+    //             `${match.name}\nSimilarity Score: ${match.score.toFixed(3)}`
+    //         );
+    //     } else {
+    //         Alert.alert('Unknown User ❌');
+    //     }
+    // };
+    const loadStoredUsers = async () => {
+        const users = await getStoredFaces();
+        setStoredUsers(users);
+    };
+const verifySelectedUser = async (user: any) => {
+  if (!cameraRef.current || !cameraReady || !user) return;
+
+  const photo = await cameraRef.current.takePhoto({ flash: 'off' });
+  const imageUri = `file://${photo.path}`;
+
+  const faces = await detectFaces(imageUri);
+
+  if (faces.length !== 1) {
+    Alert.alert(
+      'Face Error',
+      faces.length === 0 ? 'No face detected' : 'Multiple faces detected'
+    );
+    return;
+  }
+
+  const rawVector = generateFaceVector(faces[0]);
+  const inputVector = normalizeVector(rawVector);
+
+  const match = matchFace(inputVector, [user]);
+
+  if (match) {
+    Alert.alert('Verified ✅', user.name);
+  } else {
+    Alert.alert('Verification Failed ❌');
+  }
+};
+
+
     return (
-        console.log("permission=========>permission,", device),
+        console.log("storedUsers===>", storedUsers),
 
-        <SafeAreaView style={{ flex: 1 }}>
-            <Camera
-                ref={cameraRef}
-                style={{ flex: 1 }}
-                device={device}
-                isActive={false}
-                photo={true}
-                onInitialized={() => setCameraReady(true)}
-            />
-
-            <TouchableOpacity
-                onPress={verifyFace}
-                style={{
-                    marginTop: 20,
-                    padding: 12,
-                    backgroundColor: '#4CAF50',
-                    borderRadius: 8,
-                }}
-            >
-                <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                    Verify Face
-                </Text>
-            </TouchableOpacity>
-            <View style={{ position: 'absolute', bottom: 40, alignSelf: 'center' }}>
+        <SafeAreaView style={styles.container}>
+            {!takePermission ? (
                 <TouchableOpacity
-                    disabled={!cameraReady}
-                    onPress={capturePhoto}
-                    style={{
-                        width: 70,
-                        height: 70,
-                        borderRadius: 35,
-                        backgroundColor: cameraReady ? 'white' : 'gray',
-                    }}
-                />
-            </View>
-            <View style={{ position: 'absolute', top: 40, alignSelf: 'center', width: '80%' }}>
-                <TextInput
-                    placeholder="Enter user name"
-                    value={userName}
-                    onChangeText={(val: any) => setUserName(val)}
-                    style={{
-                        backgroundColor: 'white',
-                        padding: 10,
-                        borderRadius: 8,
-                        textAlign: 'center',
-                    }}
-                />
-                <TouchableOpacity>
-                    <Text>
-
-                    </Text>
+                    onPress={() => setTakePermission(true)}
+                    style={styles.registerButton}
+                >
+                    <Text style={styles.registerButtonText}>Register User</Text>
                 </TouchableOpacity>
-            </View>
+            ) : (
+                <>
+                    <Camera
+                        ref={cameraRef}
+                        style={styles.camera}
+                        device={device}
+                        isActive
+                        photo
+                        onInitialized={() => setCameraReady(true)}
+                    />
 
+                    <View style={styles.captureButtonContainer}>
+                        <TouchableOpacity
+                            disabled={!cameraReady}
+                            onPress={capturePhoto}
+                            style={[
+                                styles.captureButton,
+                                !cameraReady && styles.captureButtonDisabled,
+                            ]}
+                        />
+                    </View>
+                    {
+                        !showUserList &&
+                    
+                    <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-around',
+                        // marginBottom: 20,   
+                    }}>
+                        <TouchableOpacity
+                            disabled={!cameraReady}
+                            onPress={verifyFace}
+                            style={styles.verifyButton}
+                        >
+                            <Text style={styles.verifyButtonText}>Verify Face</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={async () => {
+                                await loadStoredUsers();
+                                setShowUserList(true);
+                            }}
+                            style={[styles.registerButton, { backgroundColor: '#9C27B0' }]}
+                        >
+                            <Text style={styles.registerButtonText}>Show Registered Users</Text>
+                        </TouchableOpacity>
+                    </View>
+}
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            placeholder="Enter user name"
+                            placeholderTextColor="red"
+                            value={userName}
+                            onChangeText={setUserName}
+                            style={styles.textInput}
+                        />
+                    </View>
+
+
+                    {showUserList && (
+                        <View style={{ padding: 20 }}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
+                                Registered Users
+                            </Text>
+
+                            {storedUsers.map((user, index) => (
+                                <View
+                                    key={index}
+                                    style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        paddingVertical: 10,
+                                        borderBottomWidth: 1,
+                                    }}
+                                >
+                                    <Text>{user.name}</Text>
+
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setSelectedUser(user);
+                                            setTakePermission(true);
+                                            setShowUserList(false);
+                                            verifySelectedUser(user)
+                                        }}
+                                        style={{
+                                            backgroundColor: '#4CAF50',
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                            borderRadius: 6,
+                                        }}
+                                    >
+                                        <Text style={{ color: '#fff' }}>Verify</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+
+                            <TouchableOpacity
+                                onPress={() => setShowUserList(false)}
+                                style={{ marginTop: 20 }}
+                            >
+                                <Text style={{ color: 'red', textAlign: 'center' }}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+
+                </>
+            )}
         </SafeAreaView>
+
     );
 }
